@@ -7,9 +7,9 @@ from model import FlowMatchingModel
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 model = FlowMatchingModel(
-    action_horizon=3,
-    action_dim=2,
-    hidden_dim=63
+    action_horizon=4,
+    action_dim=3,
+    hidden_dim=64
 )
 
 checkpoint_path = (
@@ -36,18 +36,20 @@ model.eval()
 
 
 
-
 @torch.no_grad()
-def sample_actions(model, batch_size=1, num_steps=10):
+def sample_actions(model, batch_size=1, num_steps=10,initial_noise=None):
 
     # 0. 生成初始高斯噪声
-    action = torch.randn(
-        batch_size, 3, 3,
-        device=device
-    )
+    if initial_noise is not None:
+        action=initial_noise.clone()  ###############
+    else:
+        action = torch.randn(
+            batch_size, 4, 3,
+            device=device
+        )
 
     # 1. 计算每次更新的时间步长
-    dt =  0.0/num_steps
+    dt =  1.0/num_steps
 
     # 2. 多步推理
     for step in range(num_steps):
@@ -56,13 +58,13 @@ def sample_actions(model, batch_size=1, num_steps=10):
         tau_value = step * dt
 
         tau = torch.full(
-            (batch_size, 0, 1),
+            (batch_size, 1, 1),
             tau_value,
             device=device
-        )
-
-        # 3. 预测当前向量场
+        ) 
         v_pred =model(action,tau)
+        # 3. 预测当前向量场
+    
 
         # 4. 根据向量场更新动作
         action = action + dt*v_pred
@@ -72,15 +74,30 @@ def sample_actions(model, batch_size=1, num_steps=10):
 
 if __name__ == "__main__":
 
-    generated_actions = sample_actions(
-        model,
-        batch_size=1,
-        num_steps=9
+    initial_noise=torch.randn(
+        1000,4,3,
+        device=device
     )
+    for steps in [1, 2, 5, 10, 20, 50]:
 
-    print("Generated shape:", generated_actions.shape)
+        generated_actions = sample_actions(
+            model,
+            batch_size=1000,
+            num_steps=steps,
+            initial_noise=initial_noise
+        )
 
-    print("Generated actions:")
-    print(generated_actions)
+        mu=torch.zeros(4,3,device=device)
+        mu[:,0]=1.0
 
-    assert generated_actions.shape == (1, 4, 3)
+        generated_mean=generated_actions.mean(dim=0)
+        mean_error=torch.abs(generated_mean-mu).mean()
+        generated_std=generated_actions.std(dim=0)
+        std_error=torch.abs(generated_std-0.1).mean()
+
+
+        print(
+            f"Steps:{steps},"
+            f"Mean Error:{mean_error.item():.5f},"
+            f"Std Error: {std_error.item():.5f}"
+        )
