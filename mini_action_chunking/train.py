@@ -7,7 +7,7 @@ from model import ChunkPolicy
 
 num_epochs=50
 
-
+torch.seed(42)
 
 dataset=ChunkDataset(
     num_samples=4096,
