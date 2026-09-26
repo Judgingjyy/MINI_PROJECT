@@ -25,6 +25,8 @@ class FlowPolicyDataset(Dataset):
         # observations.shape == (num_samples, obs_dim)
         #
         # 范围可以设为 [-1, 1]
+        self.obs=torch.rand(num_samples,obs_dim)
+        self.obs=self.obs*2-1
 
 
         # TODO 2
@@ -43,12 +45,23 @@ class FlowPolicyDataset(Dataset):
         #
         # 但我们希望 4 个 action 稍微有变化，
         # 不要完全一模一样。
+        direction=-self.obs
+        direction=direction.unsqueeze(1)
+        scales=torch.tensor([
+            0.4,
+            0.3,
+            0.2,
+            0.1
+        ])
+        scales=scales.reshape(1,4,1)
+        self.action=direction*scales
+        
 
 
     def __len__(self):
 
         # TODO
-        pass
+        return self.num_samples
 
 
     def __getitem__(self, idx):
@@ -61,4 +74,16 @@ class FlowPolicyDataset(Dataset):
         #
         # 注意不是以前单独返回 action
 
-        pass
+        return self.obs[idx],self.action[idx]
+
+if __name__ == "__main__":
+
+    dataset = FlowPolicyDataset()
+
+    obs, action = dataset[0]
+
+    print("obs =", obs)
+    print("action =", action)
+
+    print("obs shape =", obs.shape)
+    print("action shape =", action.shape)
