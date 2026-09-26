@@ -99,6 +99,7 @@ def train():
                 model.state_dict(),
                 "checkpoints/flow_matching.pth"
             )
+            min_loss=avg_loss
             print(f"{epoch} model is saved")
         print(
             f"Epoch [{epoch+1}/{epochs}] "
