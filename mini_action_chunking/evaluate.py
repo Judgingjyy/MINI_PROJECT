@@ -2,7 +2,9 @@ import torch
 
 from model import ChunkPolicy
 from expert import expert_action_chunk
+from dataset import ChunkDataset
 
+torch.manual_seed(31)
 model = ChunkPolicy(
     obs_dim=2,
     action_horizon=4,
@@ -20,41 +22,37 @@ model.load_state_dict(
 
 model.eval()
 
-num_tests = 1000
+device = torch.device(
+    "cuda" if torch.cuda.is_available() else "cpu"
+)
 
-states = torch.empty(
-    num_tests,
-    2
-).uniform_(-1.0, 1.0)
-goal=torch.ones(2)
+model = ChunkPolicy(
+    obs_dim=2,
+    action_horizon=4,
+    action_dim=2,
+    hidden_dim=64,
+).to(device)
 
-horizon_errors=torch.zeros(4)
-
-for state in states:
-
-    expert_chunk = expert_action_chunk(
-        state=state,
-        goal=goal,
-        horizon=4,
-        step_size=0.1
+model.load_state_dict(
+    torch.load(
+        "flow_policy.pth",
+        map_location=device
     )
+)
 
-    with torch.no_grad():
+model.eval()
 
-        pred_chunk = model(
-            state.unsqueeze(0)
-        ).squeeze(0)
 
-    abs_error=torch.abs(
-        pred_chunk-expert_chunk
-    )
-    per_action_mae=abs_error.mean(dim=1)
-    horizon_errors += per_action_mae
-horizon_errors /= num_tests
-for i, error in enumerate(horizon_errors):
+dataset = ChunkDataset()
 
-    print(
-        f"Action {i} MAE: "
-        f"{error.item():.6f}"
-    )
-    
+loader = torch.utils.data.DataLoader(
+    dataset,
+    batch_size=64,
+    shuffle=False
+)
+
+obs, target_action = next(iter(loader))
+obs = obs.to(device)
+target_action = target_action.to(device)
+
+

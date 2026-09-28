@@ -9,7 +9,7 @@ class FlowChunkPolicy(nn.Module):
         obs_dim=2,
         action_horizon=4,
         action_dim=2,
-        hidden_dim=64
+        hidden_dim=128
     ):
         super().__init__()
 
